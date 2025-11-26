@@ -416,3 +416,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+"" 
+"# Local test/temp folders" 
+"Drive/" 
+"SkillFactory/" 
+"Skillfact/" 
+"Tests/" 
