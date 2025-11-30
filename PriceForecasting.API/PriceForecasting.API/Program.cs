@@ -2,9 +2,23 @@
 using Microsoft.OpenApi.Models;
 using PriceForecasting.Data.Context;
 
-
-
 var builder = WebApplication.CreateBuilder(args);
+
+// ✅ ДОБАВЬТЕ CORS ПОЛИТИКУ
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowGitHubPages", policy =>
+    {
+        policy.WithOrigins(
+                "https://urfu-priceforecast.github.io",  // Ваш GitHub Pages
+                "http://localhost:3000",                 // Локальная разработка
+                "https://localhost:3000"                 // Локальная разработка HTTPS
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -25,6 +39,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddMemoryCache();
 
 var app = builder.Build();
+
+// ✅ ИСПОЛЬЗУЙТЕ CORS (добавьте эту строку)
+app.UseCors("AllowGitHubPages");
 
 if (app.Environment.IsDevelopment())
 {
