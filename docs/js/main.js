@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		// Fetch categories and products from API if available
 		let categories = [];
 		try {
-			const catResp = await fetch('/Products/categories');
+			const catResp = await fetch('http://localhost:5229/api/categories');
 			if (catResp.ok) categories = await catResp.json();
 		} catch (e) {
 			// ignore and fallback
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		async function loadProducts(categoryId) {
 			try {
-				const url = categoryId && categoryId !== '0' ? `/Products?categoryId=${categoryId}` : '/Products';
+				const url = categoryId && categoryId !== '0' ? `http://localhost:5229/api/products/by-category/${categoryId}` : 'http://localhost:5229/api/products';
 				const resp = await fetch(url);
 				if (resp.ok) {
 					const data = await resp.json();
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const form = signupActionBtn.closest('form');
 		const email = form.querySelector('input[name="signup_email"]').value;
 		const password = form.querySelector('input[name="signup_password"]').value;
-		const resp = await postJson('/Auth/register', { email, password });
+		const resp = await postJson('http://localhost:5229/Auth/register', { email, password });
 		if (resp.ok) {
 			alert('Вы успешно зарегистрированы');
 			setMode('login');
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const form = loginActionBtn.closest('form');
 		const email = form.querySelector('input[name="login_email"]').value;
 		const password = form.querySelector('input[name="login_password"]').value;
-		const resp = await postJson('/Auth/login', { email, password });
+		const resp = await postJson('http://localhost:5229/Auth/login', { email, password });
 		if (resp.ok) {
 			const data = await resp.json();
 			localStorage.setItem('pf_token', data.token);
@@ -429,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				localStorage.setItem('pf_article_payload', JSON.stringify(payload));
 				localStorage.setItem('pf_article_saved_at', new Date().toISOString());
 				try {
-					const resp = await fetch('/Products/datacheck', {
+					const resp = await fetch('http://localhost:5229/api/products/datacheck', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify(payload)

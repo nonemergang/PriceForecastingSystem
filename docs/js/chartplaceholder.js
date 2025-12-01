@@ -30,11 +30,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const ctx = document.getElementById("chart");
   const chartSkeleton = document.getElementById("chartSkeleton");
-
   let chart;
 
   const infoText = document.getElementById("info-text");
   const recText = document.getElementById("recommendations-text");
+
 
   let currentScenario = "positive";
   let currentPeriod = 30;
@@ -70,8 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showSkeletons() {
-    if (infoText) infoText.innerHTML = '<div class="skeleton" style="height:16px;width:80%"></div>';
-    if (recText) recText.innerHTML = '<div class="skeleton" style="height:16px;width:80%"></div>';
+    // Показываем только skeleton для графика, текст оставляем как есть
     if (chartSkeleton) chartSkeleton.style.display = "block";
     if (ctx) ctx.style.display = "none";
   }
@@ -81,22 +80,33 @@ document.addEventListener("DOMContentLoaded", () => {
     if (ctx) ctx.style.display = "block";
   }
 
-  const menuBtn = document.querySelector(".menu-btn");
+  const menuBtn = document.getElementById("menuBtn");
   const menuContainer = document.querySelector(".menu-container");
+
+  console.log("Menu elements found:", { menuBtn: !!menuBtn, menuContainer: !!menuContainer });
 
   if (menuBtn && menuContainer) {
     menuBtn.addEventListener("click", () => {
+      console.log("Menu button clicked");
       menuContainer.classList.toggle("open");
+      console.log("Menu container classes:", menuContainer.classList);
     });
+  } else {
+    console.error("Menu elements not found!", { menuBtn, menuContainer });
   }
 
   const menuButtons = document.querySelectorAll(".menu-dropdown button");
+  console.log("Menu buttons found:", menuButtons.length);
+
   menuButtons.forEach(btn => {
+    console.log("Setting up button:", btn.dataset.scenario);
     btn.addEventListener("click", () => {
       const scenario = btn.dataset.scenario;
+      console.log("Scenario button clicked:", scenario);
       if (!scenario) return;
 
       currentScenario = scenario;
+      console.log("Current scenario set to:", currentScenario);
 
       if (menuContainer) menuContainer.classList.remove("open");
 
@@ -120,15 +130,22 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadPrice() {
     if (!infoText) return;
 
+    console.log("Loading price for article:", article);
     try {
-      const res = await fetch(`/api/price/demo/${article}`);
+      const url = `http://localhost:5229/api/price/demo/${article}`;
+      console.log("Fetching price:", url);
+      const res = await fetch(url);
+      console.log("Price response status:", res.status);
+
       const d = await res.json();
+      console.log("Price API Response:", JSON.stringify(d, null, 2));
 
       infoText.innerHTML = `
-        <strong>Товар:</strong> ${d.name || "Товар"}<br>
+        <strong>Товар:</strong> ${d.product?.name || d.name || "Товар"}<br>
         <strong>Артикул:</strong> ${article}<br>
         <strong>Актуальная цена:</strong> ${d.price ? d.price + " ₽" : "н/д"}
       `;
+      console.log("Updated price info");
     } catch (err) {
       console.warn("loadPrice error:", err);
       infoText.innerHTML = `
@@ -140,46 +157,96 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadRecommendations() {
+    console.log("Loading recommendations for article:", article);
     try {
-      const res = await fetch(`/api/recommendations/${article}?period=${currentPeriod}&scenario=${scenarioMap[currentScenario]}`);
-      if (!res.ok) throw new Error();
+      const url = `http://localhost:5229/api/recommendations/${article}?period=${currentPeriod}&scenario=${scenarioMap[currentScenario]}`;
+      console.log("Fetching:", url);
+      const res = await fetch(url);
+      console.log("Response status:", res.status);
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const r = await res.json();
-      recText.textContent = `${r.action} (изменение: ${r.percent}%, уверенность: ${r.confidence}%)`;
-    } catch {
+      console.log("Recommendations API Response:", JSON.stringify(r, null, 2));
+      const recommendationText = `${r.PriceAction} (изменение: ${r.Percentage}%, уверенность: ${Math.round(r.Confidence * 100)}%)`;
+      console.log("Setting recommendation text:", recommendationText);
+      if (recText) {
+        recText.textContent = recommendationText;
+        console.log("Recommendation text set successfully, current content:", recText.textContent);
+      } else {
+        console.error("recText element not found!");
+      }
+    } catch (error) {
+      console.error("Error loading recommendations:", error);
       // сервер не дал ответ → выводим рекомендации по сценарию
       recText.textContent = getFakeRec();
     }
   }
 
   async function loadForecast() {
+    console.log("Loading forecast for article:", article, "period:", currentPeriod);
     try {
-      const res = await fetch(
-        `/api/forecast/${article}?days=${currentPeriod}`
-      );
-      const data = await res.json();
+      const url = `http://localhost:5229/api/forecast/${article}?days=${currentPeriod}`;
+      console.log("Fetching forecast:", url);
+      const res = await fetch(url);
+      console.log("Forecast response status:", res.status);
 
-      const labels = data.values.map(v => v.date);
-      const values = data.values.map(v => v.price);
+      const data = await res.json();
+      console.log("Forecast API Response:", JSON.stringify(data, null, 2));
+
+      // Используем структуру из API ответа
+      let labels = data.dates || [];
+      let values = data.values || [];
+
+      console.log("Using labels:", labels.length, "values:", values.length);
+
+      // Validate and filter data before creating chart
+      const validData = [];
+      for (let i = 0; i < Math.min(labels.length, values.length); i++) {
+        const value = values[i];
+        if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+          validData.push({ label: labels[i], value: value });
+        }
+      }
+
+      console.log("Valid data points:", validData.length, "of", values.length);
+
+      if (validData.length === 0) {
+        console.error("No valid numeric values for chart!");
+        return;
+      }
+
+      const chartLabels = validData.map(d => d.label);
+      const chartValues = validData.map(d => d.value);
 
       if (chart) chart.destroy();
 
-      chart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            label: `Прогноз (${currentScenario})`,
-            data: values,
-            borderColor: currentScenario === "positive" ? "green" : "red",
-            borderWidth: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false
-        }
-      });
+      console.log("Creating chart with valid data points:", validData.length);
+      console.log("First few chart labels:", chartLabels.slice(0, 3));
+      console.log("First few chart values:", chartValues.slice(0, 3));
+
+      try {
+        chart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: chartLabels,
+            datasets: [{
+              label: `Прогноз (${currentScenario})`,
+              data: chartValues,
+              borderColor: currentScenario === "positive" ? "green" : currentScenario === "negative" ? "red" : "blue",
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+        console.log("Chart created successfully!");
+        hideSkeletons(); // Show the chart immediately
+      } catch (chartError) {
+        console.error("Chart creation error:", chartError);
+      }
 
     } catch {
       recText.textContent = recText.textContent;
@@ -196,7 +263,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hideSkeletons();
   }
 
-  setInterval(loadAll, 15000);
+    setInterval(loadAll, 15000);
 
   loadAll();
 });

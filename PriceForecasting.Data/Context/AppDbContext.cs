@@ -38,7 +38,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PriceHistory>().ToTable("PriceHistory");
         modelBuilder.Entity<PriceHistory>().Property(ph => ph.id).HasColumnName("Id");
         modelBuilder.Entity<PriceHistory>().Property(ph => ph.product_id).HasColumnName("ProductId");
-        modelBuilder.Entity<PriceHistory>().Property(ph => ph.price).HasColumnName("Price");
+        modelBuilder.Entity<PriceHistory>().Property(ph => ph.price).HasColumnName("Price").HasColumnType("decimal(18,2)");
         modelBuilder.Entity<PriceHistory>().Property(ph => ph.created_at).HasColumnName("CreatedAt");
     }
 }

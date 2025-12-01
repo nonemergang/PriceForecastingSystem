@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function loadPrice() {
     try {
-      const res = await fetch(`/api/price/demo/${article}`);
+      const res = await fetch(`http://localhost:5229/api/price/demo/${article}`);
       const d = await res.json();
       infoText.textContent = `Цена: ${d.price}₽, дата: ${d.date}`;
     } catch {
@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadRecommendations() {
     try {
       const res = await fetch(
-        `/api/recommendations/${article}?period=${currentPeriod}&scenario=${scenarioMap[currentScenario]}`
+        `http://localhost:5229/api/recommendations/${article}?period=${currentPeriod}&scenario=${scenarioMap[currentScenario]}`
       );
       const r = await res.json();
 
@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadForecast() {
     try {
       const res = await fetch(
-        `/api/forecast/${article}?days=${currentPeriod}`
+        `http://localhost:5229/api/forecast/${article}?days=${currentPeriod}`
       );
       const data = await res.json();
 

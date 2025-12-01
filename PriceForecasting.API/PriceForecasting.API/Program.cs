@@ -1,6 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿global using PriceForecasting.Data.Context;
+
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using PriceForecasting.Data.Context;
+using PriceForecasting.Core.Services;
 
 
 
@@ -24,7 +26,38 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Добавляем MemoryCache (для кеширования рекомендаций 6 часов)
 builder.Services.AddMemoryCache();
 
+// Регистрируем ML сервис
+builder.Services.AddHttpClient<IMlService, MlService>();
+builder.Services.AddScoped<IMlService, MlService>();
+
+// Добавляем CORS для фронтенда
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
+
+// Инициализация базы данных с тестовыми данными
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        SeedData.Initialize(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred seeding the DB.");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -33,6 +66,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

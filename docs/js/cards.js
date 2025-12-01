@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const card = createEmptyCard(article);
 
     try {
-      const res = await fetch(`/api/price/demo/${article}`);
+      const res = await fetch(`http://localhost:5229/api/price/demo/${article}`);
       const priceInfo = await res.json();
 
       card.querySelector(".info").textContent =
