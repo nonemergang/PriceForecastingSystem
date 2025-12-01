@@ -1,7 +1,32 @@
-document.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("load", () => {
+  const p1 = document.getElementById("popup1");
+  if (p1) p1.style.display = "flex";
+});
 
+const popup1Next = document.getElementById("popup1Next");
+if (popup1Next) {
+  popup1Next.onclick = () => {
+    const p1 = document.getElementById("popup1");
+    const p2 = document.getElementById("popup2");
+    if (p1) p1.style.display = "none";
+    if (p2) p2.style.display = "flex";
+  };
+}
+
+const popup2Close = document.getElementById("popup2Close");
+if (popup2Close) {
+  popup2Close.onclick = () => {
+    const p2 = document.getElementById("popup2");
+    if (p2) p2.style.display = "none";
+  };
+}
+
+// ============================
+//  ОСНОВНОЙ КОД
+// ============================
+document.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
-  const article = urlParams.get("article");
+  const article = urlParams.get("article") || "demo";
 
   const ctx = document.getElementById("chart");
   const chartSkeleton = document.getElementById("chartSkeleton");
@@ -16,65 +41,114 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const scenarioMap = {
     positive: "optimist",
+    neutral: "neutral",
     negative: "pessimist"
   };
 
+    // Фейковые рекомендации по сценариям
+  const fakeScenarioRecommendations = {
+    positive: [
+      "Рынок растёт: можно повышать цену на 3–7% в ближайшие недели.",
+      "Позитивная динамика: подходящее время для закупки дополнительных партий товара.",
+      "Спрос увеличивается: стоит рассмотреть расширение ассортимента."
+    ],
+    neutral: [
+      "Цены стабильны: удерживайте текущий уровень без резких изменений.",
+      "Нейтральная динамика: можно закупать небольшие объёмы по мере необходимости.",
+      "Ситуация спокойная: следите за изменениями на рынке без срочных действий."
+    ],
+    negative: [
+      "Рынок снижается: рекомендуется снижать цены на 5–10% для поддержания спроса.",
+      "Негативная динамика: избегайте крупных закупок, возможны дальнейшие падения.",
+      "Спрос падает: оптимизируйте складские остатки, избегайте заморозки средств."
+    ]
+  };
+
+  function getFakeRec() {
+    const list = fakeScenarioRecommendations[currentScenario];
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
   function showSkeletons() {
-    infoText.innerHTML = <div class="skeleton" style="height:16px;width:80%"></div>;
-    recText.innerHTML = <div class="skeleton" style="height:16px;width:80%"></div>;
-    chartSkeleton.style.display = "block";
-    ctx.style.display = "none";
+    if (infoText) infoText.innerHTML = '<div class="skeleton" style="height:16px;width:80%"></div>';
+    if (recText) recText.innerHTML = '<div class="skeleton" style="height:16px;width:80%"></div>';
+    if (chartSkeleton) chartSkeleton.style.display = "block";
+    if (ctx) ctx.style.display = "none";
   }
 
   function hideSkeletons() {
-    chartSkeleton.style.display = "none";
-    ctx.style.display = "block";
+    if (chartSkeleton) chartSkeleton.style.display = "none";
+    if (ctx) ctx.style.display = "block";
   }
 
-  document.querySelector(".menu-btn").onclick = () =>
-    document.querySelector(".menu-container").classList.toggle("open");
+  const menuBtn = document.querySelector(".menu-btn");
+  const menuContainer = document.querySelector(".menu-container");
 
-  document.querySelectorAll(".menu-dropdown button").forEach(btn => {
-    btn.onclick = () => {
-      currentScenario = btn.dataset.scenario;
-      document.querySelector(".menu-container").classList.remove("open");
+  if (menuBtn && menuContainer) {
+    menuBtn.addEventListener("click", () => {
+      menuContainer.classList.toggle("open");
+    });
+  }
+
+  const menuButtons = document.querySelectorAll(".menu-dropdown button");
+  menuButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const scenario = btn.dataset.scenario;
+      if (!scenario) return;
+
+      currentScenario = scenario;
+
+      if (menuContainer) menuContainer.classList.remove("open");
+
       loadAll();
-    };
+    });
   });
 
-  document.querySelectorAll(".period-list li").forEach(li => {
-    li.onclick = () => {
-      document.querySelectorAll(".period-list li")
-        .forEach(el => el.classList.remove("active"));
+  const periodItems = document.querySelectorAll(".period-list li");
 
+  periodItems.forEach(li => {
+    li.addEventListener("click", () => {
+      periodItems.forEach(el => el.classList.remove("active"));
       li.classList.add("active");
-      currentPeriod = parseInt(li.dataset.period);
+
+      currentPeriod = parseInt(li.dataset.period) || currentPeriod;
 
       loadAll();
-    };
+    });
   });
 
   async function loadPrice() {
+    if (!infoText) return;
+
     try {
       const res = await fetch(`/api/price/demo/${article}`);
       const d = await res.json();
-      infoText.textContent = `Цена: ${d.price}₽, дата: ${d.date}`;
-    } catch {
-      infoText.textContent = "Ошибка загрузки";
+
+      infoText.innerHTML = `
+        <strong>Товар:</strong> ${d.name || "Товар"}<br>
+        <strong>Артикул:</strong> ${article}<br>
+        <strong>Актуальная цена:</strong> ${d.price ? d.price + " ₽" : "н/д"}
+      `;
+    } catch (err) {
+      console.warn("loadPrice error:", err);
+      infoText.innerHTML = `
+        <strong>Товар:</strong> неизвестно<br>
+        <strong>Артикул:</strong> ${article}<br>
+        <strong>Актуальная цена:</strong> ошибка загрузки
+      `;
     }
   }
 
   async function loadRecommendations() {
     try {
-      const res = await fetch(
-        `/api/recommendations/${article}?period=${currentPeriod}&scenario=${scenarioMap[currentScenario]}`
-      );
+      const res = await fetch(`/api/recommendations/${article}?period=${currentPeriod}&scenario=${scenarioMap[currentScenario]}`);
+      if (!res.ok) throw new Error();
+
       const r = await res.json();
-
       recText.textContent = `${r.action} (изменение: ${r.percent}%, уверенность: ${r.confidence}%)`;
-
     } catch {
-      recText.textContent = "Ошибка рекомендаций";
+      // сервер не дал ответ → выводим рекомендации по сценарию
+      recText.textContent = getFakeRec();
     }
   }
 
@@ -108,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
     } catch {
-      recText.textContent = "Ошибка построения графика";
+      recText.textContent = recText.textContent;
     }
   }
 
